@@ -1,4 +1,4 @@
-val scalapbVersion = "0.10.2"
+val scalapbVersion = "0.11.3"
 val scalapbVersionPatch = "0.9.7"
 
 /**
@@ -20,7 +20,7 @@ addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.7")
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
 addSbtPlugin("com.github.sbt" % "sbt-release" % "1.0.15")
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.15.0")
-addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.34")
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.6")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.1")
 addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.2.7")
