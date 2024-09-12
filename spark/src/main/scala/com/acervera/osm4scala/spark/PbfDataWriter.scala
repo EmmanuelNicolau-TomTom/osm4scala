@@ -4,7 +4,7 @@
 
 package com.acervera.osm4scala.spark
 
-import com.acervera.osm4scala.spark.fc.{OsmElement, OsmElementTypes, RelationMemberType}
+import com.acervera.osm4scala.spark.model.{Info, OsmElement, OsmElementTypes, RelationMemberType}
 import com.slimjars.dist.gnu.trove.list.array.TLongArrayList
 import de.topobyte.osm4j.core.model.iface.{EntityType, OsmTag}
 import de.topobyte.osm4j.core.model.impl
@@ -52,7 +52,7 @@ case class PbfDataWriter(deserializer: Deserializer[OsmElement], outputStream: O
   }
 
   private def createMetadata(element: OsmElement): Metadata = {
-    val info = element.info
+    val info = element.info.getOrElse(Info())
     val timeInMilliSeconds = info.timestamp.map(ts => ts.toEpochMilli).getOrElse(0L)
     new Metadata(info.version.getOrElse(0), timeInMilliSeconds, info.userId.getOrElse(0).toLong, info.userName.orNull, info.changeset.getOrElse(0L))
   }
@@ -60,7 +60,7 @@ case class PbfDataWriter(deserializer: Deserializer[OsmElement], outputStream: O
   private def writeRelation(element: OsmElement): Unit = {
     val members = element.relations
       .getOrElse(Seq.empty)
-      .map(member => new RelationMember(member.id, toRelationType(member.elementType), member.role))
+      .map(member => new RelationMember(member.id, toRelationType(member.relationType), member.role))
       .toList
       .asJava
     pbfWriter.write(new Relation(element.id, members, createTags(element), createMetadata(element)))

@@ -198,8 +198,9 @@ def listOfProjects(): Seq[ProjectReference] = {
 
   val modules: Seq[ProjectReference] = Seq(
     core,
-    spark2,
-    spark2FatShaded,
+    // Commenting as FC writer is not compatible with spark 2 APIs and it would throw error during assembly
+    //    spark2,
+    //    spark2FatShaded,
     commonUtilities,
     examplesCounter,
     examplesCounterParallel,

@@ -2,7 +2,7 @@
  * The MIT License (MIT)
  */
 
-package com.acervera.osm4scala.spark.fc
+package com.acervera.osm4scala.spark.model
 
 case class OsmElement(
                        id: Long,
@@ -12,9 +12,9 @@ case class OsmElement(
                        nodes: Seq[Long] = Seq.empty,
                        relations: Option[Seq[RelationMember]] = Option(Seq.empty),
                        tags: Map[String, String],
-                       info: Info = Info())
+                       info: Option[Info] = Some(Info()))
 
-case class RelationMember(id: Long, elementType: Byte, role: String)
+case class RelationMember(id: Long, relationType: Byte, role: String)
 
 import java.time.Instant
 

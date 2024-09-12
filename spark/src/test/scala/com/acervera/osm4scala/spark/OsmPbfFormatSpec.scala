@@ -30,7 +30,7 @@ import com.acervera.osm4scala.spark.SparkSessionFixture.withSparkSession
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession, functions => fn}
+import org.apache.spark.sql.{DataFrame, Encoders, Row, SaveMode, SparkSession, functions => fn}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
@@ -312,9 +312,19 @@ class OsmPbfFormatSpec extends AnyWordSpec with Matchers with SparkSessionBefore
       }
     }
 
-    "write" in {
-      val df = loadOsmPbf(spark, madridPath)
-      df.write.format("osm.pbf").save(Files.createTempDirectory("osm4scala") + "/madrid.osm.pbf")
+    "write works and can be read back" in {
+      val dfBefore = loadOsmPbf(spark, madridPath)
+      dfBefore.show(false)
+      val countsByTypeBefore = dfBefore.groupBy("type").count().sort("type").as(Encoders.product[(Byte, Long)]).collect()
+
+      val path = Files.createTempDirectory("osm4scala") + "/madrid.osm.pbf"
+      dfBefore.write.format("osm.pbf").save(path)
+
+      val dfAfter = spark.read.format("osm.pbf").load(path)
+      dfAfter.show(false)
+      val countsByTypeAfter = dfBefore.groupBy("type").count().sort("type").as(Encoders.product[(Byte, Long)]).collect()
+
+      countsByTypeAfter shouldEqual countsByTypeBefore
     }
 
   }
