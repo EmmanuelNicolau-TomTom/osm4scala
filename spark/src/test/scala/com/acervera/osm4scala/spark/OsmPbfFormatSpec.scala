@@ -36,6 +36,7 @@ import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.File
+import java.nio.file.Files
 import java.sql.Timestamp
 import scala.util.Random
 
@@ -46,43 +47,43 @@ object SourcesForTesting {
 }
 
 /**
-  * Testing with offset is in middle of the different parts of the pbf file.
-  * For the three blocks testing file, these are the offsets
-  *                          OFFSET
-  *      4 bytes             0
-  *      Header Size: [14]   0+4=4
-  *      Blob Size: [152]    4+14=18
-  *      4 bytes             18+152=170
-  *      Header Size: [13]   170+4=174
-  *      Blob Size: [70249]  174+13=187
-  *      4 bytes             187+70249=70436
-  *      Header Size: [13]   70436+4=70440
-  *      Blob Size: [60870]  70440+13=70453
-  */
+ * Testing with offset is in middle of the different parts of the pbf file.
+ * For the three blocks testing file, these are the offsets
+ * OFFSET
+ * 4 bytes             0
+ * Header Size: [14]   0+4=4
+ * Blob Size: [152]    4+14=18
+ * 4 bytes             18+152=170
+ * Header Size: [13]   170+4=174
+ * Blob Size: [70249]  174+13=187
+ * 4 bytes             187+70249=70436
+ * Header Size: [13]   70436+4=70440
+ * Blob Size: [60870]  70440+13=70453
+ */
 class OsmPbfFormatWithSplitsSpec extends AnyWordSpec with Matchers with TableDrivenPropertyChecks {
   private val CORES = 2
   private val offsets = Table(
     ("testName", "offset"),
-    ("header-size Int first 1", 170+1),
-    ("header-size Int 0", 70436+0),
-    ("header-size Int 1", 70436+1),
-    ("header-size Int 2", 70436+2),
-    ("header-size Int 3", 70436+3),
-    ("header-size Int 4", 70436+4),
-    ("header 1", 174+1),
-    ("header second 1", 70440+1),
-    ("header second 2", 70440+2),
-    ("header second 3", 70440+3),
-    ("header second 4", 70440+4),
-    ("blob 1", 187+1),
-    ("blob 2", 70453+1)
+    ("header-size Int first 1", 170 + 1),
+    ("header-size Int 0", 70436 + 0),
+    ("header-size Int 1", 70436 + 1),
+    ("header-size Int 2", 70436 + 2),
+    ("header-size Int 3", 70436 + 3),
+    ("header-size Int 4", 70436 + 4),
+    ("header 1", 174 + 1),
+    ("header second 1", 70440 + 1),
+    ("header second 2", 70440 + 2),
+    ("header second 3", 70440 + 3),
+    ("header second 4", 70440 + 4),
+    ("blob 1", 187 + 1),
+    ("blob 2", 70453 + 1)
   )
 
   def splitSize(size: Int): Option[SparkConf] = Some(new SparkConf().set("spark.sql.files.maxPartitionBytes", size.toString))
 
   "OsmPbfFormat" should {
     "process all blocks depending of splits offset" when {
-      forAll(offsets){ (testName, offset) =>
+      forAll(offsets) { (testName, offset) =>
         s"is in $testName" in withSparkSession(CORES, testName, splitSize(offset)) { spark =>
           spark.sqlContext.read
             .format("osm.pbf")
@@ -119,10 +120,10 @@ class OsmPbfFormatSpec extends AnyWordSpec with Matchers with SparkSessionBefore
     "parsing all only one time" in {
       val expectedEntities = 2677227
 
-      val withoutSplit = loadOsmPbf(spark, madridPath, None,Map(OsmPbfFormat.PARAMETER_SPLIT -> "false")).count()
+      val withoutSplit = loadOsmPbf(spark, madridPath, None, Map(OsmPbfFormat.PARAMETER_SPLIT -> "false")).count()
       withoutSplit shouldBe expectedEntities
 
-      val withSplit = loadOsmPbf(spark, madridPath, None,Map(OsmPbfFormat.PARAMETER_SPLIT -> "true")).count()
+      val withSplit = loadOsmPbf(spark, madridPath, None, Map(OsmPbfFormat.PARAMETER_SPLIT -> "true")).count()
       withSplit shouldBe expectedEntities
     }
 
@@ -171,12 +172,12 @@ class OsmPbfFormatSpec extends AnyWordSpec with Matchers with SparkSessionBefore
               col("id"),
               (
                 col("info.version").isNull and
-                col("info.timestamp").isNull and
-                col("info.changeset").isNull and
-                col("info.userId").isNull and
-                col("info.userName").isNull and
-                col("info.visible").isNull
-              ).as("allNulls")
+                  col("info.timestamp").isNull and
+                  col("info.changeset").isNull and
+                  col("info.userId").isNull and
+                  col("info.userName").isNull and
+                  col("info.visible").isNull
+                ).as("allNulls")
             ).filter("id == 171946").collect()(0)
 
           testIfNulls.getAs[Long]("id") shouldBe 171946L
@@ -193,10 +194,10 @@ class OsmPbfFormatSpec extends AnyWordSpec with Matchers with SparkSessionBefore
         way3996192.getAs[AnyRef]("longitude") should be(null)
         way3996192.getAs[Map[String, String]]("tags") shouldBe
           Map("name" -> "Plaza de Grecia",
-              "highway" -> "primary",
-              "lanes" -> "3",
-              "source:name" -> "common knowledge",
-              "junction" -> "roundabout")
+            "highway" -> "primary",
+            "lanes" -> "3",
+            "source:name" -> "common knowledge",
+            "junction" -> "roundabout")
 
         way3996192.getAs[Seq[Long]]("nodes") shouldBe Seq(20952914L, 2424952617L)
         way3996192.getAs[Seq[Any]]("relations") shouldBe Seq.empty
@@ -310,6 +311,12 @@ class OsmPbfFormatSpec extends AnyWordSpec with Matchers with SparkSessionBefore
 
       }
     }
+
+    "write" in {
+      val df = loadOsmPbf(spark, madridPath)
+      df.write.format("osm.pbf").save(Files.createTempDirectory("osm4scala") + "/madrid.osm.pbf")
+    }
+
   }
 
 }

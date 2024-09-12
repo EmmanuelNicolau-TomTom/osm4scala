@@ -39,12 +39,25 @@ lazy val akkaVersion = "2.5.31"
 lazy val spark3Version = "3.4.1"
 lazy val spark2Version = "2.4.7"
 lazy val sparkDefaultVersion = spark3Version
+lazy val osm4jVersion = "1.3.0"
 
 lazy val scala213 = "2.13.5"
 lazy val scala212 = "2.12.13"
 lazy val scala211 = "2.11.12"
 lazy val scalaVersions = if (isPatch211Enable()) Seq(scala211) else Seq(scala213, scala212)
 lazy val sparkScalaVersions = if (isPatch211Enable()) Seq(scala211) else Seq(scala212)
+
+lazy val additionalRepositories: Vector[Resolver] = Vector(
+  "Topobyte Repository" at "https://mvn.topobyte.de",
+  "Slimjars Repository" at "https://mvn.slimjars.com"
+)
+
+lazy val topobyteExcludes: Seq[InclusionRule] = Seq(
+  ExclusionRule(organization = "com.google.protobuf"),
+  ExclusionRule(organization = "com.google.guava"),
+  ExclusionRule(organization = "net.jpountz.lz4"),
+  ExclusionRule(organization = "org.slf4j")
+)
 
 lazy val commonSettings = Seq(
   crossScalaVersions := scalaVersions,
@@ -69,10 +82,13 @@ lazy val commonSettings = Seq(
       url("https://www.acervera.com")
     )
   ),
+  resolvers ++= additionalRepositories,
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % scalatestVersion % Test,
     "org.scalacheck" %% "scalacheck" % scalacheckVersion % Test,
-    "commons-io" % "commons-io" % commonIOVersion % Test
+    "commons-io" % "commons-io" % commonIOVersion % Test,
+    "de.topobyte" % "osm4j-pbf" % osm4jVersion excludeAll (topobyteExcludes: _ *),
+    "de.topobyte" % "osm4j-core" % osm4jVersion excludeAll (topobyteExcludes: _ *)
   ),
   assembly / test := {},
   scalacOptions ++= Seq(
@@ -124,7 +140,7 @@ def generateSparkFatShadedModule(sparkVersion: String, sparkPrj: Project): Proje
       disablingCoverage,
       name := s"osm4scala-spark${sparkVersion.head}-shaded",
       description := "Spark 2 connector for OpenStreetMap Pbf parser as shaded fat jar.",
-      Compile / packageBin := (sparkPrj / Compile/ assembly).value
+      Compile / packageBin := (sparkPrj / Compile / assembly).value
     )
 
 def generateSparkModule(sparkVersion: String): Project = {
@@ -145,11 +161,11 @@ def generateSparkModule(sparkVersion: String): Project = {
     .enablePlugins(AssemblyPlugin)
     .settings(
       commonSettings,
-      Compile / scalaSource       := baseDirectory.value / pathFromModule("src/main/scala"),
+      Compile / scalaSource := baseDirectory.value / pathFromModule("src/main/scala"),
       Compile / resourceDirectory := baseDirectory.value / pathFromModule("src/main/resources"),
-      Test / scalaSource          := baseDirectory.value / pathFromModule("src/test/scala"),
-      Test / resourceDirectory    := baseDirectory.value / pathFromModule("src/test/resources"),
-      Test / parallelExecution    := false,
+      Test / scalaSource := baseDirectory.value / pathFromModule("src/test/scala"),
+      Test / resourceDirectory := baseDirectory.value / pathFromModule("src/test/resources"),
+      Test / parallelExecution := false,
       crossScalaVersions := sparkScalaVersions,
       enablingPublishingSettings,
       coverageConfig,
@@ -201,7 +217,7 @@ def listOfProjects(): Seq[ProjectReference] = {
     exampleSparkDocumentation
   )
 
-  val projects = modules ++ (if(isPatch211Enable()) Seq.empty else spark3Projects)
+  val projects = modules ++ (if (isPatch211Enable()) Seq.empty else spark3Projects)
 
   println(s"PATCH_211 is ${isPatch211Enable()} so we are going to work with this list of projects: \n${projects.mkString("\t- ", "\n\t- ", "")}")
 
@@ -210,7 +226,7 @@ def listOfProjects(): Seq[ProjectReference] = {
 
 lazy val root = (project in file("."))
   .disablePlugins(AssemblyPlugin)
-  .aggregate( listOfProjects(): _*)
+  .aggregate(listOfProjects(): _*)
   .settings(
     name := "osm4scala-root",
     sonatypeProfileName := "com.acervera.osm4scala",
@@ -219,7 +235,7 @@ lazy val root = (project in file("."))
     publish / skip := true,
     // don't use sbt-release's cross facility
     releaseCrossBuild := false,
-    releaseProcess :=   Seq[ReleaseStep](
+    releaseProcess := Seq[ReleaseStep](
       checkSnapshotDependencies,
       inquireVersions,
       runClean,
@@ -345,7 +361,6 @@ lazy val examplesPrimitivesExtraction =
       description := "Extract all primitives from the pbf into a folder using osm4scala."
     )
     .dependsOn(core, commonUtilities)
-
 
 
 lazy val exampleSparkUtilities = Project(id = "examples-spark-utilities", base = file("examples/spark-utilities"))
