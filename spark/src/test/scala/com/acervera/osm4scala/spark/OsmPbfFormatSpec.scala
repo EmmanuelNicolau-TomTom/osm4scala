@@ -314,15 +314,13 @@ class OsmPbfFormatSpec extends AnyWordSpec with Matchers with SparkSessionBefore
 
     "write works and can be read back" in {
       val dfBefore = loadOsmPbf(spark, madridPath)
-      dfBefore.show(false)
       val countsByTypeBefore = dfBefore.groupBy("type").count().sort("type").as(Encoders.product[(Byte, Long)]).collect()
 
       val path = Files.createTempDirectory("osm4scala") + "/madrid.osm.pbf"
       dfBefore.write.format("osm.pbf").save(path)
 
       val dfAfter = spark.read.format("osm.pbf").load(path)
-      dfAfter.show(false)
-      val countsByTypeAfter = dfBefore.groupBy("type").count().sort("type").as(Encoders.product[(Byte, Long)]).collect()
+      val countsByTypeAfter = dfAfter.groupBy("type").count().sort("type").as(Encoders.product[(Byte, Long)]).collect()
 
       countsByTypeAfter shouldEqual countsByTypeBefore
     }

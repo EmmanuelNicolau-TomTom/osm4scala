@@ -4,7 +4,7 @@
 
 package com.acervera.osm4scala.spark
 
-import com.acervera.osm4scala.spark.model.{Info, OsmElement, OsmElementTypes, RelationMemberType}
+import com.acervera.osm4scala.spark.model.{Info, OsmEntity, OsmElementTypes, RelationMemberType}
 import com.slimjars.dist.gnu.trove.list.array.TLongArrayList
 import de.topobyte.osm4j.core.model.iface.{EntityType, OsmTag}
 import de.topobyte.osm4j.core.model.impl
@@ -20,7 +20,7 @@ import java.io.OutputStream
 import java.util
 import scala.collection.JavaConverters._
 
-case class PbfDataWriter(deserializer: Deserializer[OsmElement], outputStream: OutputStream, pbfWriter: CustomOsmPbfWriter) {
+case class PbfDataWriter(deserializer: Deserializer[OsmEntity], outputStream: OutputStream, pbfWriter: CustomOsmPbfWriter) {
 
   def write(row: InternalRow): Unit = {
     val element = deserializer.apply(row)
@@ -31,17 +31,17 @@ case class PbfDataWriter(deserializer: Deserializer[OsmElement], outputStream: O
     }
   }
 
-  private def writeNode(element: OsmElement): Unit = {
+  private def writeNode(element: OsmEntity): Unit = {
     val longitude = element.longitude.getOrElse(throw new IllegalArgumentException(s"Node is missing longitude: $element"))
     val latitude = element.latitude.getOrElse(throw new IllegalArgumentException(s"Node is missing latitude: $element"))
     pbfWriter.write(new impl.Node(element.id, longitude, latitude, createTags(element), createMetadata(element)))
   }
 
-  private def writeWay(element: OsmElement): Unit = {
+  private def writeWay(element: OsmEntity): Unit = {
     pbfWriter.write(new impl.Way(element.id, new TLongArrayList(element.nodes.toArray), createTags(element), createMetadata(element)))
   }
 
-  private def createTags(element: OsmElement): util.ArrayList[OsmTag] = {
+  private def createTags(element: OsmEntity): util.ArrayList[OsmTag] = {
     val tags = new util.ArrayList[OsmTag]()
     if (element.tags != null && element.tags.nonEmpty) {
       element.tags.toSeq
@@ -51,15 +51,14 @@ case class PbfDataWriter(deserializer: Deserializer[OsmElement], outputStream: O
     tags
   }
 
-  private def createMetadata(element: OsmElement): Metadata = {
+  private def createMetadata(element: OsmEntity): Metadata = {
     val info = element.info.getOrElse(Info())
     val timeInMilliSeconds = info.timestamp.map(ts => ts.toEpochMilli).getOrElse(0L)
     new Metadata(info.version.getOrElse(0), timeInMilliSeconds, info.userId.getOrElse(0).toLong, info.userName.orNull, info.changeset.getOrElse(0L))
   }
 
-  private def writeRelation(element: OsmElement): Unit = {
+  private def writeRelation(element: OsmEntity): Unit = {
     val members = element.relations
-      .getOrElse(Seq.empty)
       .map(member => new RelationMember(member.id, toRelationType(member.relationType), member.role))
       .toList
       .asJava
@@ -84,8 +83,8 @@ case class PbfDataWriter(deserializer: Deserializer[OsmElement], outputStream: O
 object PbfDataWriter {
   def apply(schema: StructType, os: OutputStream): PbfDataWriter = {
     val osmElementDeserializer = Encoders
-      .product[OsmElement]
-      .asInstanceOf[ExpressionEncoder[OsmElement]]
+      .product[OsmEntity]
+      .asInstanceOf[ExpressionEncoder[OsmEntity]]
       .resolveAndBind(schema.map(f => AttributeReference(f.name, f.dataType, f.nullable, f.metadata)()))
       .createDeserializer()
     PbfDataWriter(osmElementDeserializer, os, new CustomOsmPbfWriter(os, true))
